@@ -19,15 +19,7 @@ else:
 
 # --- TITLE ---
 st.title("Friday Sail & Sizzle - 2026 MOB - Entry Form")
-
-
-# --- TOP BANNER IMAGE ---
-BANNER_IMAGE = "fss_mob_banner.png"
-
-if os.path.exists(BANNER_IMAGE):
-    st.image(BANNER_IMAGE, use_container_width=True)
-else:
-    st.warning("Banner image not found in repository.")
+    
 # --- INSTRUCTIONS ---
 st.markdown("""
 ### ℹ️ Instructions
@@ -260,6 +252,7 @@ try:
 
 except Exception as e:
     st.warning(f"Could not load leaderboard: {e}")
+
 
 
 
