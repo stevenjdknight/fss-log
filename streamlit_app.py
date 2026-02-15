@@ -4,6 +4,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, time, timedelta
 import json
+import os
 
 # --- CONFIG ---
 st.set_page_config(page_title=" Friday Sail & Sizzle", layout="wide")
@@ -250,6 +251,7 @@ try:
 
 except Exception as e:
     st.warning(f"Could not load leaderboard: {e}")
+
 
 
 
