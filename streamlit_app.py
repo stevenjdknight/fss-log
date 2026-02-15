@@ -4,13 +4,22 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, time, timedelta
 import json
-import os
+import os  # ✅ needed for os.path.exists
 
 # --- CONFIG ---
-st.set_page_config(page_title=" Friday Sail & Sizzle", layout="wide")
+st.set_page_config(page_title="Friday Sail & Sizzle", layout="wide")
+
+# --- TOP BANNER IMAGE ---
+BANNER_IMAGE = "fss_mob_banner.png"  # in repo root
+
+if os.path.exists(BANNER_IMAGE):
+    st.image(BANNER_IMAGE, use_container_width=True)
+else:
+    st.warning(f"Banner image not found: {BANNER_IMAGE}")
 
 # --- TITLE ---
-st.title(" Friday Sail & Sizzle - 2026 MOB - Entry Form")
+st.title("Friday Sail & Sizzle - 2026 MOB - Entry Form")
+
 
 # --- TOP BANNER IMAGE ---
 BANNER_IMAGE = "fss_mob_banner.png"
@@ -251,6 +260,7 @@ try:
 
 except Exception as e:
     st.warning(f"Could not load leaderboard: {e}")
+
 
 
 
