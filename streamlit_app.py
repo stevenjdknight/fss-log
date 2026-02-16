@@ -174,6 +174,7 @@ try:
         "Start Time", "Finish Time", "Elapsed Time", "Corrected Time",
         "Comments or Improvement Ideas", "Submission Timestamp"
     ]
+
     data = pd.DataFrame(worksheet.get_all_records(expected_headers=expected_headers))
     data["Race Date"] = pd.to_datetime(data["Race Date"], errors="coerce")
     data = data.dropna(subset=["Race Date"])
@@ -190,6 +191,7 @@ try:
     else:
         week_data["Corrected Time"] = pd.to_timedelta(week_data["Corrected Time"], errors="coerce")
         week_data["Elapsed Time"] = pd.to_timedelta(week_data["Elapsed Time"], errors="coerce")
+        week_data = week_data.dropna(subset=["Corrected Time", "Elapsed Time"])
         week_data = week_data.sort_values("Corrected Time")
 
         week_data["Corrected Time"] = week_data["Corrected Time"].dt.components.apply(
@@ -221,7 +223,7 @@ try:
 
         week_data["Points"] = [assign_points(i, num_boats) for i in range(num_boats)]
 
-           st.dataframe(week_data[[
+        st.dataframe(week_data[[
             "Skipper Name or Nickname",
             "Boat Name",
             "Elapsed Time",
@@ -230,7 +232,9 @@ try:
             "Submission Timestamp"
         ]])
 
-        ]])
+except Exception as e:
+    st.warning(f"Could not load weekly leaderboard: {e}")
+
 
     # --- ANNUAL LEADERBOARD ---
     st.subheader("\U0001F3C6 Annual Leaderboard")
@@ -265,6 +269,7 @@ try:
 
 except Exception as e:
     st.warning(f"Could not load leaderboard: {e}")
+
 
 
 
