@@ -118,9 +118,6 @@ with st.form("race_entry_form"):
     ]
     finish_time = st.selectbox("Finish Time", finish_time_options, index=59)
 
-    island_options = ["Potter Island", "Swiss Island", "McCrea Island", "Norway Island", "Berry Island", "Swansea Island", "Galliard, Bass & Pike Island", "Ida Island"]
-    marks = [st.selectbox(f"Mark {i+1}", options=[""] + island_options, key=f"mark{i}") for i in range(6)]
-
     comments = st.text_area("Comments or Improvement Ideas")
 
     submitted = st.form_submit_button("Submit Entry")
@@ -149,7 +146,6 @@ with st.form("race_entry_form"):
                 finish_time.strftime("%H:%M"),
                 str(elapsed),
                 str(corrected),
-                *marks,
                 comments,
                 datetime.now().isoformat()
             ]
@@ -176,7 +172,6 @@ try:
     expected_headers = [
         "Race Date", "Boat Name", "Skipper Name or Nickname", "Boat Type",
         "Start Time", "Finish Time", "Elapsed Time", "Corrected Time",
-        "Mark 1", "Mark 2", "Mark 3", "Mark 4", "Mark 5", "Mark 6",
         "Comments or Improvement Ideas", "Submission Timestamp"
     ]
     data = pd.DataFrame(worksheet.get_all_records(expected_headers=expected_headers))
@@ -267,4 +262,5 @@ try:
 
 except Exception as e:
     st.warning(f"Could not load leaderboard: {e}")
+
 
