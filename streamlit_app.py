@@ -221,14 +221,14 @@ try:
 
         week_data["Points"] = [assign_points(i, num_boats) for i in range(num_boats)]
 
-       st.dataframe(week_data[[
-    "Skipper Name or Nickname",
-    "Boat Name",
-    "Elapsed Time",
-    "Corrected Time",
-    "Points",
-    "Submission Timestamp"
-]])
+           st.dataframe(week_data[[
+            "Skipper Name or Nickname",
+            "Boat Name",
+            "Elapsed Time",
+            "Corrected Time",
+            "Points",
+            "Submission Timestamp"
+        ]])
 
         ]])
 
@@ -265,6 +265,7 @@ try:
 
 except Exception as e:
     st.warning(f"Could not load leaderboard: {e}")
+
 
 
 
