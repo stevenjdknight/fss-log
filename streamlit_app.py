@@ -152,17 +152,17 @@ with st.form("race_entry_form"):
             worksheet.append_row(row)
             st.success("Race entry submitted successfully!")
 
-st.markdown("""
-<div style="text-align:center; padding:30px;">
-    <h2>🔥 Off to the BBQ!</h2>
-    <p style="font-size:18px;">
-        Nice work skipper — head up to the dock,
-        grab a cold one and enjoy the sizzle.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+            st.markdown("""
+            <div style="text-align:center; padding:30px;">
+            <h2>🔥 Off to the BBQ!</h2>
+            <p style="font-size:18px;">
+            Nice work skipper — head up to the dock,
+            grab a cold one and enjoy the sizzle.
+            </p>
+            </div>
+            """, unsafe_allow_html=True)
 
-st.balloons()
+            st.balloons()
 
 
 # --- WEEKLY LEADERBOARD ---
@@ -262,5 +262,6 @@ try:
 
 except Exception as e:
     st.warning(f"Could not load leaderboard: {e}")
+
 
 
