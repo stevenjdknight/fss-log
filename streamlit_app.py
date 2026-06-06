@@ -2,34 +2,34 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime, time, timedelta
-import json
-import os  # ✅ needed for os.path.exists
-from pathlib import Path  # ✅ ensures banner path works on Streamlit Cloud
+from datetime import datetime, timedelta
+from pathlib import Path
 
 # --- CONFIG ---
 st.set_page_config(page_title="Friday Sail & Sizzle", layout="wide")
 
 # --- TOP BANNER IMAGE ---
-BANNER_IMAGE = "fss_mob_banner.png"  # in repo root
-BANNER_PATH = Path(__file__).parent / BANNER_IMAGE  # ✅ robust path (same folder as this script)
+BANNER_IMAGE = "fss_mob_banner.png"
+BANNER_PATH = Path(__file__).parent / BANNER_IMAGE
 
 if BANNER_PATH.exists():
-    st.image(str(BANNER_PATH), use_container_width=True)
+    st.image(str(BANNER_PATH), width="stretch")
 else:
     st.warning(f"Banner image not found: {BANNER_PATH}")
 
 # --- TITLE ---
 st.title("Friday Sail & Sizzle - 2026 MOB - Entry Form")
-    
+
 # --- INSTRUCTIONS ---
 st.markdown("""
 ### ℹ️ Instructions
 To log your race:
-- Ensure the entry is dated fo the **Friday**- Add up to three crew members for this race- Provide your lap time in **HH:MM:SS** format using the time picker
+- Ensure the entry is dated for the **Friday**
+- Add up to three crew members for this race
+- Enter your lap time using hours, minutes, and seconds
 - Your result will appear on the weekly leaderboard
 
-**Note:** Both weekly and annual leaderboards are displayed. If no new entry is submitted this week, the last race's results will continue to show.
+**Note:** Both weekly and annual leaderboards are displayed.
 """)
 
 # --- SCORING SYSTEM INFO ---
@@ -44,14 +44,16 @@ Each race is scored based on the number of participating boats:
 Scoring is ranked by **Corrected Time using Portsmouth-based multiplier**.
 """)
 
-# --- AUTH ---
-SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+# --- GOOGLE SHEETS AUTH ---
+SCOPE = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
 service_account_info = st.secrets.get("GOOGLE_SERVICE_ACCOUNT")
+
 if service_account_info is None:
-    st.error(
-        "Google service account credentials are not configured. "
-        "Please add `GOOGLE_SERVICE_ACCOUNT` to Streamlit secrets."
-    )
+    st.error("Google service account credentials are not configured.")
     st.stop()
 
 try:
@@ -62,14 +64,29 @@ try:
     )
     worksheet = sh.worksheet("Race Entries")
 except Exception as e:
-    st.error(
-        "Unable to connect to the Google Sheets backend. "
-        "Check your service account and sheet access."
-    )
+    st.error("Unable to connect to the Google Sheets backend.")
     st.exception(e)
     st.stop()
 
-# --- Portsmouth Ratings (simplified multiplier: 100 / rating) ---
+# --- SHEET HEADERS ---
+expected_headers = [
+    "Race Date",
+    "Boat Name",
+    "Skipper Name or Nickname",
+    "Boat Type",
+    "Crew Member 1",
+    "Crew Member 2",
+    "Crew Member 3",
+    "Lap Hours",
+    "Lap Minutes",
+    "Lap Seconds",
+    "Elapsed Time",
+    "Corrected Time",
+    "Comments or Improvement Ideas",
+    "Submission Timestamp"
+]
+
+# --- Portsmouth Ratings ---
 portsmouth_index = {
     "29er": 78.0,
     "Abbott 22": 95.0,
@@ -90,7 +107,7 @@ portsmouth_index = {
     "Hobie Dragoon": 85.0,
     "Hobie FX One": 70.0,
     "Hobie 20": 73.0,
-    "Hobie 21": 72.0,    
+    "Hobie 21": 72.0,
     "Hunter 22": 90.0,
     "Laser": 91.1,
     "Laser II": 88.0,
@@ -99,7 +116,7 @@ portsmouth_index = {
     "Paceship 23": 96.0,
     "Sandpiper": 105.0,
     "Schock 23": 89.0,
-    "Shark 24": 107,
+    "Shark 24": 107.0,
     "Siren": 101.2,
     "Sirius 21/22": 92.5,
     "Soling": 83.0,
@@ -113,6 +130,32 @@ portsmouth_index = {
     "Not Listed - Add in comments": 100.0
 }
 
+def format_timedelta(td):
+    if pd.isna(td):
+        return ""
+    total_seconds = int(td.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+def assign_points(rank, total):
+    if total == 1:
+        return 1
+    if total == 2:
+        return 2 - rank if rank < 2 else 0
+    if total == 3:
+        return max(0, 3 - rank)
+    if total >= 4:
+        if rank == 0:
+            return 4
+        if rank == 1:
+            return 3
+        if rank == 2:
+            return 2
+        return 1
+    return 0
+
 # --- FORM ---
 with st.form("race_entry_form"):
     st.subheader("Race Details")
@@ -122,19 +165,26 @@ with st.form("race_entry_form"):
     skipper_name = st.text_input("Skipper Name or Nickname")
     boat_type = st.selectbox("Boat Type", sorted(list(portsmouth_index.keys())))
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    st.markdown("### Crew")
+    crew_col1, crew_col2, crew_col3 = st.columns(3)
+
+    with crew_col1:
         crew_member_1 = st.text_input("Crew Member 1")
-    with col2:
+    with crew_col2:
         crew_member_2 = st.text_input("Crew Member 2")
-    with col3:
+    with crew_col3:
         crew_member_3 = st.text_input("Crew Member 3")
 
-    lap_time = st.time_input(
-        "Lap Time (HH:MM:SS)",
-        value=time(0, 30, 0),
-        step=60
-    )
+    st.markdown("### Lap Time")
+
+    lap_col1, lap_col2, lap_col3 = st.columns(3)
+
+    with lap_col1:
+        lap_hours = st.number_input("Hours", min_value=0, max_value=23, value=0, step=1)
+    with lap_col2:
+        lap_minutes = st.number_input("Minutes", min_value=0, max_value=59, value=30, step=1)
+    with lap_col3:
+        lap_seconds = st.number_input("Seconds", min_value=0, max_value=59, value=0, step=1)
 
     comments = st.text_area("Comments or Improvement Ideas")
 
@@ -145,10 +195,11 @@ with st.form("race_entry_form"):
             st.error("Race date must be a Friday.")
         else:
             elapsed = timedelta(
-                hours=lap_time.hour,
-                minutes=lap_time.minute,
-                seconds=lap_time.second
+                hours=int(lap_hours),
+                minutes=int(lap_minutes),
+                seconds=int(lap_seconds)
             )
+
             if elapsed <= timedelta(seconds=0):
                 st.error("Lap time must be greater than 00:00:00.")
             else:
@@ -164,152 +215,128 @@ with st.form("race_entry_form"):
                     crew_member_1,
                     crew_member_2,
                     crew_member_3,
-                    "",
-                    "",
+                    int(lap_hours),
+                    int(lap_minutes),
+                    int(lap_seconds),
                     str(elapsed),
                     str(corrected),
                     comments,
                     datetime.now().isoformat()
                 ]
+
                 worksheet.append_row(row)
+
                 st.success("Race entry submitted successfully!")
 
                 st.markdown("""
                 <div style="text-align:center; padding:30px;">
-                <h2>🔥 Off to the BBQ!</h2>
-                <p style="font-size:18px;">
-                Nice work skipper — head up to the dock,
-                grab a cold one and enjoy the sizzle.
-                </p>
+                    <h2>🔥 Off to the BBQ!</h2>
+                    <p style="font-size:18px;">
+                        Nice work skipper — head up to the dock,
+                        grab a cold one and enjoy the sizzle.
+                    </p>
                 </div>
                 """, unsafe_allow_html=True)
 
                 st.balloons()
 
-
 # --- WEEKLY LEADERBOARD ---
-st.subheader("\U0001F4CA Weekly Leaderboard")
+st.subheader("📊 Weekly Leaderboard")
 
 try:
-    expected_headers = [
-        "Race Date", "Boat Name", "Skipper Name or Nickname", "Boat Type",
-        "Crew Member 1", "Crew Member 2", "Crew Member 3",
-        "Start Time", "Finish Time", "Elapsed Time", "Corrected Time",
-        "Comments or Improvement Ideas", "Submission Timestamp"
-    ]
-
     data = pd.DataFrame(worksheet.get_all_records(expected_headers=expected_headers))
-    data["Race Date"] = pd.to_datetime(data["Race Date"], errors="coerce")
-    data = data.dropna(subset=["Race Date"])
 
-    latest_friday = data["Race Date"].max()
-    week_data = data[data["Race Date"] == latest_friday].copy()
-
-    # Filter malformed corrected times
-    week_data = week_data[week_data["Corrected Time"].astype(str).str.strip() != ""]
-    week_data = week_data[~week_data["Corrected Time"].astype(str).str.contains("nan", na=False)]
-
-    if week_data.empty:
-        st.warning("No valid entries found for the latest race. Check formatting or try re-entering a log.")
+    if data.empty:
+        st.info("No race entries yet.")
     else:
-        week_data["Corrected Time"] = pd.to_timedelta(week_data["Corrected Time"], errors="coerce")
-        week_data["Elapsed Time"] = pd.to_timedelta(week_data["Elapsed Time"], errors="coerce")
-        week_data = week_data.dropna(subset=["Corrected Time", "Elapsed Time"])
-        week_data = week_data.sort_values("Corrected Time")
+        data["Race Date"] = pd.to_datetime(data["Race Date"], errors="coerce")
+        data = data.dropna(subset=["Race Date"])
 
-        week_data["Corrected Time"] = week_data["Corrected Time"].dt.components.apply(
-            lambda row: f"{int(row.hours):02}:{int(row.minutes):02}:{int(row.seconds):02}", axis=1
-        )
-        week_data["Elapsed Time"] = week_data["Elapsed Time"].dt.components.apply(
-            lambda row: f"{int(row.hours):02}:{int(row.minutes):02}:{int(row.seconds):02}", axis=1
-        )
+        data["Corrected Time"] = pd.to_timedelta(data["Corrected Time"], errors="coerce")
+        data["Elapsed Time"] = pd.to_timedelta(data["Elapsed Time"], errors="coerce")
+        data = data.dropna(subset=["Corrected Time", "Elapsed Time"])
 
-        num_boats = len(week_data)
+        if data.empty:
+            st.warning("No valid race entries found.")
+        else:
+            latest_friday = data["Race Date"].max()
+            week_data = data[data["Race Date"] == latest_friday].copy()
+            week_data = week_data.sort_values("Corrected Time").reset_index(drop=True)
 
-        def assign_points(rank, total):
-            if total == 1:
-                return 1
-            elif total == 2:
-                return 2 - rank if rank < 2 else 0
-            elif total == 3:
-                return max(0, 3 - rank)
-            elif total >= 4:
-                if rank == 0:
-                    return 4
-                elif rank == 1:
-                    return 3
-                elif rank == 2:
-                    return 2
-                else:
-                    return 1
-            return 0
+            num_boats = len(week_data)
+            week_data["Points"] = [assign_points(i, num_boats) for i in range(num_boats)]
 
-        week_data["Points"] = [assign_points(i, num_boats) for i in range(num_boats)]
+            week_data["Elapsed Time"] = week_data["Elapsed Time"].apply(format_timedelta)
+            week_data["Corrected Time"] = week_data["Corrected Time"].apply(format_timedelta)
 
-        st.dataframe(week_data[[
-            "Skipper Name or Nickname",
-            "Boat Name",
-            "Elapsed Time",
-            "Corrected Time",
-            "Points",
-            "Submission Timestamp"
-        ]])
+            st.dataframe(week_data[[
+                "Skipper Name or Nickname",
+                "Boat Name",
+                "Boat Type",
+                "Elapsed Time",
+                "Corrected Time",
+                "Points",
+                "Submission Timestamp"
+            ]], width="stretch")
 
-    st.subheader("\U0001F3C6 Annual Leaderboard")
-    data = data[data["Corrected Time"].astype(str).str.strip() != ""]
-    data = data[~data["Corrected Time"].astype(str).str.contains("nan", na=False)]
-    data["Corrected Time"] = pd.to_timedelta(data["Corrected Time"], errors="coerce")
-    data["Elapsed Time"] = pd.to_timedelta(data["Elapsed Time"], errors="coerce")
-    data = data.dropna(subset=["Corrected Time", "Elapsed Time"])
-    data = data.sort_values("Race Date")
-    data["Race Year"] = data["Race Date"].dt.year
+    # --- ANNUAL LEADERBOARD ---
+    st.subheader("🏆 Annual Leaderboard")
 
-    def compute_annual_points(df):
+    if data.empty:
+        st.info("No annual leaderboard entries available yet.")
+    else:
+        data["Race Year"] = data["Race Date"].dt.year
+
         result_rows = []
-        for date, group in df.groupby("Race Date"):
+
+        for race_date, group in data.groupby("Race Date"):
             group = group.sort_values("Corrected Time").reset_index(drop=True)
             total = len(group)
+
             for i, row in group.iterrows():
-                points = assign_points(i, total)
                 result_rows.append({
                     "Skipper Name or Nickname": row["Skipper Name or Nickname"],
                     "Race Year": row["Race Year"],
-                    "Points": points
+                    "Points": assign_points(i, total)
                 })
-        result_df = pd.DataFrame(result_rows)
-        return result_df.groupby(["Race Year", "Skipper Name or Nickname"]).sum().reset_index()
+
+        annual = pd.DataFrame(result_rows)
+
+        if annual.empty:
+            st.info("No annual leaderboard entries available yet.")
+        else:
+            annual = annual.groupby(
+                ["Race Year", "Skipper Name or Nickname"],
+                as_index=False
+            )["Points"].sum()
+
+            latest_year = annual["Race Year"].max()
+            leaderboard = annual[annual["Race Year"] == latest_year].sort_values(
+                "Points", ascending=False
+            )
+
+            st.dataframe(leaderboard, width="stretch")
+
+    # --- ANNUAL CREW PARTICIPATION ---
+    st.subheader("👥 Annual Crew Participation")
 
     if data.empty:
-        st.info("No valid annual leaderboard entries are available yet.")
+        st.info("No crew participation data available yet.")
     else:
-        annual = compute_annual_points(data)
-        if annual.empty:
-            st.info("No valid annual leaderboard entries are available yet.")
+        crew_columns = ["Crew Member 1", "Crew Member 2", "Crew Member 3"]
+        crew_rows = []
+
+        for _, row in data[crew_columns].fillna("").iterrows():
+            crew_names = {str(name).strip() for name in row.values if str(name).strip()}
+            crew_rows.extend(crew_names)
+
+        if crew_rows:
+            crew_counts = pd.Series(crew_rows).value_counts().reset_index()
+            crew_counts.columns = ["Crew Member", "Crewed Count"]
+            crew_counts = crew_counts.sort_values("Crewed Count", ascending=False)
+            st.dataframe(crew_counts, width="stretch")
         else:
-            latest_year = annual["Race Year"].max()
-            leaderboard = annual[annual["Race Year"] == latest_year].sort_values("Points", ascending=False)
-            st.dataframe(leaderboard)
-
-    st.subheader("\U0001F3C6 Annual Crew Participation")
-    crew_columns = ["Crew Member 1", "Crew Member 2", "Crew Member 3"]
-    crew_rows = []
-    for _, row in data[crew_columns].fillna("").iterrows():
-        crew_names = {str(name).strip() for name in row.values if str(name).strip()}
-        crew_rows.extend(crew_names)
-
-    if crew_rows:
-        crew_counts = pd.Series(crew_rows).value_counts().reset_index()
-        crew_counts.columns = ["Crew Member", "Crewed Count"]
-        crew_counts = crew_counts.sort_values("Crewed Count", ascending=False)
-        st.dataframe(crew_counts)
-    else:
-        st.info("No crew member data is available yet.")
+            st.info("No crew member data is available yet.")
 
 except Exception as e:
     st.warning(f"Could not load leaderboards: {e}")
-
-
-
-
-
-
