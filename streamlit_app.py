@@ -240,7 +240,7 @@ with st.form("race_entry_form"):
 
                 st.balloons()
 
-# --- WEEKLY LEADERBOARD ---
+# --- LEADERBOARDS ---
 st.subheader("📊 Weekly Leaderboard")
 
 try:
@@ -252,9 +252,32 @@ try:
         data["Race Date"] = pd.to_datetime(data["Race Date"], errors="coerce")
         data = data.dropna(subset=["Race Date"])
 
-        data["Corrected Time"] = pd.to_timedelta(data["Corrected Time"], errors="coerce")
-        data["Elapsed Time"] = pd.to_timedelta(data["Elapsed Time"], errors="coerce")
-        data = data.dropna(subset=["Corrected Time", "Elapsed Time"])
+        data["Lap Hours"] = pd.to_numeric(data["Lap Hours"], errors="coerce").fillna(0)
+        data["Lap Minutes"] = pd.to_numeric(data["Lap Minutes"], errors="coerce").fillna(0)
+        data["Lap Seconds"] = pd.to_numeric(data["Lap Seconds"], errors="coerce").fillna(0)
+
+        # Recalculate elapsed time from lap columns every time app loads
+        data["Elapsed Time"] = data.apply(
+            lambda row: timedelta(
+                hours=int(row["Lap Hours"]),
+                minutes=int(row["Lap Minutes"]),
+                seconds=int(row["Lap Seconds"])
+            ),
+            axis=1
+        )
+
+        # Recalculate corrected time from boat type every time app loads
+        data["Corrected Time"] = data.apply(
+            lambda row: timedelta(
+                seconds=round(
+                    row["Elapsed Time"].total_seconds()
+                    * (100.0 / portsmouth_index.get(row["Boat Type"], 100.0))
+                )
+            ),
+            axis=1
+        )
+
+        data = data[data["Elapsed Time"] > timedelta(seconds=0)]
 
         if data.empty:
             st.warning("No valid race entries found.")
