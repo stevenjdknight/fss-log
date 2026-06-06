@@ -46,11 +46,28 @@ Scoring is ranked by **Corrected Time using Portsmouth-based multiplier**.
 
 # --- AUTH ---
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-service_account_info = st.secrets["GOOGLE_SERVICE_ACCOUNT"]
-creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
-gc = gspread.authorize(creds)
-sh = gc.open_by_url("https://docs.google.com/spreadsheets/d/1mAUmYrkc1n37vrTkiZ-J8OsI5SnA7r-nYmdPIR04OZY/edit")
-worksheet = sh.worksheet("Race Entries")
+service_account_info = st.secrets.get("GOOGLE_SERVICE_ACCOUNT")
+if service_account_info is None:
+    st.error(
+        "Google service account credentials are not configured. "
+        "Please add `GOOGLE_SERVICE_ACCOUNT` to Streamlit secrets."
+    )
+    st.stop()
+
+try:
+    creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
+    gc = gspread.authorize(creds)
+    sh = gc.open_by_url(
+        "https://docs.google.com/spreadsheets/d/1mAUmYrkc1n37vrTkiZ-J8OsI5SnA7r-nYmdPIR04OZY/edit"
+    )
+    worksheet = sh.worksheet("Race Entries")
+except Exception as e:
+    st.error(
+        "Unable to connect to the Google Sheets backend. "
+        "Check your service account and sheet access."
+    )
+    st.exception(e)
+    st.stop()
 
 # --- Portsmouth Ratings (simplified multiplier: 100 / rating) ---
 portsmouth_index = {
@@ -116,7 +133,7 @@ with st.form("race_entry_form"):
     lap_time = st.time_input(
         "Lap Time (HH:MM:SS)",
         value=time(0, 30, 0),
-        step=1
+        step=60
     )
 
     comments = st.text_area("Comments or Improvement Ideas")
