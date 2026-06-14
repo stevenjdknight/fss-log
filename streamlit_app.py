@@ -114,6 +114,7 @@ portsmouth_index = {
     "Mutineer 15": 91.4,
     "Optimist": 123.6,
     "Paceship 23": 96.0,
+    "RS Quest": 94.2,
     "Sandpiper": 105.0,
     "Schock 23": 89.0,
     "Shark 24": 107.0,
